@@ -7,10 +7,11 @@ import axios from "axios";
 import cors from "cors";
 const app = express();
 
-//packages
+//HTTP Security and Compression's and Log's and Cors Errors
 app.use(helmet());
 app.use(compression());
 app.use(morgan("dev"));
+app.use(cors());
 
 //env
 dotenv.config();
@@ -19,9 +20,6 @@ const { SERVER, API_KEY, EXTRA_URL } = process.env;
 
 //server start
 app.listen(port, () => console.log(`Running on port ${port}`));
-
-//fix cors
-app.use(cors());
 
 //apis
 app.get("/api/home", async (req, res) => {
@@ -218,3 +216,6 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
     return res.status(500).json({ error: `An error occurred:${error}` });
   }
 });
+app.get("/api/cron", async (req, res) =>
+  res.status(200).json("CronJob Happend !")
+);
