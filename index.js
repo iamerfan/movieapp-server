@@ -200,17 +200,12 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
 
     const { ids } = response;
     const imdbId = ids.imdb_id;
+    const extra = await axios
+      .get(`${EXTRA_URL}${imdbId}`)
+      .then(({ data }) => data)
+      .catch((e) => console.log(e));
 
-    if (imdbId) {
-      const extra = await axios
-        .get(`${EXTRA_URL}${imdbId}`)
-        .then(({ data }) => data)
-        .catch((e) => console.log(e));
-
-      return res.status(200).json({ ...response, extra });
-    }
-
-    return res.status(200).json(response);
+    return res.status(200).json({ ...response, extra });
   } catch (error) {
     console.error(`Error in Promise.all: ${error}`);
     return res.status(500).json({ error: `An error occurred:${error}` });
