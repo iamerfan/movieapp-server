@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import helmet from "helmet";
 import axios from "axios";
 import cors from "cors";
+import cheerio from "cheerio";
 const app = express();
 
 //HTTP Security and Compression's and Log's and Cors Errors
@@ -200,17 +201,75 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
 
     const { ids } = response;
     const imdbId = ids.imdb_id;
-    const extra = await axios
-      .get(`${EXTRA_URL}${imdbId}`)
-      .then(({ data }) => data)
-      .catch((e) => console.log(e));
 
-    return res.status(200).json({ ...response, extra });
+    if (imdbId) {
+      const extra = await axios
+        .get(`${EXTRA_URL}${imdbId}`)
+        .then(({ data }) => data)
+        .catch((e) => console.log(e));
+
+      console.log(imdbId);
+
+      const { data: downloadLinks } = await axios.get(
+        `http://localhost:${port}/api/download/${imdbId}`
+      );
+
+      return res
+        .status(200)
+        .json({ ...response, extra, downloadLinks: downloadLinks });
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     console.error(`Error in Promise.all: ${error}`);
     return res.status(500).json({ error: `An error occurred:${error}` });
   }
 });
+
 app.get("/api/cron", async (req, res) =>
   res.status(200).json("CronJob Happend !")
 );
+
+app.get("/api/download/:imdbId", async (req, res) => {
+  try {
+    const { imdbId } = req.params;
+    if (!imdbId) {
+      return res.status(400).json({ error: "Missing imdbId parameter" });
+    }
+    const { data: html } = await axios.get(
+      `https://starkmoviez.com/movies/${imdbId}/`
+    );
+    if (!html) {
+      return res.status(500).json({ error: "Failed to fetch HTML" });
+    }
+    const result = [];
+    const $ = cheerio.load(html);
+    const sides = $("ul>.item-type");
+    sides.each((i, el) => {
+      const t1 = $(el).find("span:nth-of-type(2)").text().split("کیفیت : ")[1];
+      const t2 = $(el).find("span:nth-of-type(3)").text();
+      const size = t2?.split("حجم : ")[1]?.split("-")[0];
+      const handleSize = () => {
+        if (size.includes("گیگابایت")) return size.split("گیگابایت")[0] + "GB";
+        if (size.includes("مگابایت")) return size.split("مگابایت")[0] + "MB";
+      };
+      const handleDubOrSub = () => {
+        if (t2.includes("زیرنویس")) return "Sub";
+        if (t2.includes("دوبله")) return "Dub";
+      };
+      const link = $(el).find(".dllink").attr("href");
+      if (link && t1 && t2)
+        return result.push({
+          t1,
+          t2,
+          size: handleSize(),
+          link,
+          DubOrSub: handleDubOrSub(),
+        });
+    });
+    return res.status(200).json({ status: 200, result });
+  } catch (error) {
+    console.error(error);
+    return res.status(200).json({ status: 400, result: [] });
+  }
+});
