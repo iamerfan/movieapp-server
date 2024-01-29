@@ -16,7 +16,7 @@ app.use(cors());
 
 //env
 dotenv.config();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 const { SERVER, API_KEY, EXTRA_URL } = process.env;
 
 //server start
@@ -208,15 +208,21 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
         .then(({ data }) => data)
         .catch((e) => console.log(e));
 
-      console.log(imdbId);
-
-      const { data: downloadLinks } = await axios.get(
-        `http://localhost:${port}/api/download/${imdbId}`
+      const { data } = await axios.get(
+        `http://localhost:${port}/api/movie/${extra.Year}/${imdbId}`
       );
-
-      return res
-        .status(200)
-        .json({ ...response, extra, downloadLinks: downloadLinks });
+      if (data.status == 200) {
+        return res.status(200).json({
+          ...response,
+          extra,
+          downloadLinks: data.result,
+        });
+      }
+      return res.status(200).json({
+        ...response,
+        extra,
+        downloadLinks: [],
+      });
     }
 
     return res.status(200).json(response);
@@ -271,5 +277,42 @@ app.get("/api/download/:imdbId", async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(200).json({ status: 400, result: [] });
+  }
+});
+app.get("/api/movie/:year/:imdbId", async (req, res) => {
+  try {
+    const { imdbId, year } = req.params;
+
+    if (!imdbId || !year) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
+
+    const id = imdbId.slice(2);
+    const url = `https://berlin.saymyname.website/Movies/${year}/${id}/`;
+    const { data: html } = await axios.get(url);
+
+    if (!html) {
+      return res.status(500).json({ error: "Failed to fetch HTML" });
+    }
+
+    const $ = cheerio.load(html);
+    const links = $("tr");
+    const result = [];
+
+    links.each((i, el) => {
+      const text = $(el).find(".n>a>code").text();
+      const size = $(el).find(".s>code").text();
+      const link = url + $(el).find(".n>a").attr("href");
+
+      if (i > 1) {
+        result.push({ text, size, link });
+      }
+    });
+
+    return res.status(200).json({ status: 200, result });
+  } catch (error) {
+    return res
+      .status(200)
+      .json({ status: 404, error: "Not Found", result: [] });
   }
 });
