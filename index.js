@@ -275,3 +275,16 @@ app.get("/api/movie/:imdbId", async (req, res) => {
       .json({ status: 404, error: "Not Found", result: [] });
   }
 });
+app.get("/api/imdb/:type/:id", async (req, res) => {
+  const { type, id } = req.params;
+  const url = `${SERVER}/${type}/${id}/external_ids?${API_KEY}`;
+
+  try {
+    const response = await axios.get(url);
+    const imdbId = response.data.imdb_id;
+    return res.status(200).json(imdbId);
+  } catch (error) {
+    console.error(`Error fetching data from: ${error}`);
+    return null;
+  }
+});
