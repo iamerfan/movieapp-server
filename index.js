@@ -283,6 +283,51 @@ app.get("/api/movie/:imdbId", async (req, res) => {
       .json({ status: 404, error: "Not Found", result: [] });
   }
 });
+app.get("/api/movie2/:imdbId", async (req, res) => {
+  try {
+    const { imdbId } = req.params;
+    if (!imdbId) {
+      return res.status(400).json({ error: "Missing imdbId parameter" });
+    }
+    const { data: html } = await axios.get(
+      `https://starkmoviez.com/movies/${imdbId}/`
+    );
+    if (!html) {
+      return res.status(500).json({ error: "Failed to fetch HTML" });
+    }
+    const result = [];
+    const $ = cheerio.load(html);
+    const sides = $("ul>.item-type");
+    sides.each((i, el) => {
+      const text = $(el)
+        .find("span:nth-of-type(2)")
+        .text()
+        .split("کیفیت : ")[1];
+      const info = $(el).find("span:nth-of-type(3)").text();
+      const size = info?.split("حجم : ")[1]?.split("-")[0];
+      const handleSize = () => {
+        if (size.includes("گیگابایت")) return size.split("گیگابایت")[0] + "GB";
+        if (size.includes("مگابایت")) return size.split("مگابایت")[0] + "MB";
+      };
+      const handleDubOrSub = () => {
+        if (info.includes("زیرنویس")) return "Sub";
+        if (info.includes("دوبله")) return "Dub";
+      };
+      const link = $(el).find(".dllink").attr("href");
+      if (link && text)
+        return result.push({
+          text,
+          size: handleSize(),
+          link,
+          DubOrSub: handleDubOrSub(),
+        });
+    });
+    return res.status(200).json({ status: 200, result });
+  } catch (error) {
+    console.error(error);
+    return res.status(200).json({ status: 400, result: [] });
+  }
+});
 app.get("/api/imdb/:type/:id", async (req, res) => {
   const { type, id } = req.params;
   const url = `${SERVER}/${type}/${id}/external_ids?${API_KEY}`;
