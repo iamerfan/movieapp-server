@@ -145,6 +145,18 @@ app.get("/api/search/:q/:page?", async (req, res) => {
       res.status(500).json({ error: "An error occurred" });
     });
 });
+app.get("/api/search/movie/:q/:page?", async (req, res) => {
+  const { q, page } = req.params;
+  const url = `${SERVER}/search/movie?${API_KEY}&query=${q}&page=${page || 1}`;
+
+  try {
+    const { data } = await axios.get(url);
+    return res.status(200).json([...data.results]);
+  } catch (error) {
+    console.error(`Error fetching data from ${url}: ${error}`);
+    return null;
+  }
+});
 app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
   const { type, id, seasonId } = req.params;
 
@@ -232,14 +244,10 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
   }
 });
 
-app.get("/api/cron", async (req, res) =>
-  res.status(200).json("CronJob Happend !")
-);
-
 app.get("/api/movie/:imdbId", async (req, res) => {
   try {
     const { imdbId } = req.params;
-
+    console.log(imdbId);
     if (!imdbId) {
       return res.status(400).json({ error: "Missing parameters" });
     }
