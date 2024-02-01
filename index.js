@@ -220,20 +220,26 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
         .then(({ data }) => data)
         .catch((e) => console.log(e));
 
-      const { data } = await axios.get(
-        `http://localhost:${port}/api/movie/${extra.Year}/${imdbId}`
-      );
-      if (data.status == 200) {
-        return res.status(200).json({
-          ...response,
-          extra,
-          downloadLinks: data.result,
-        });
-      }
+      const getDownloadLinks = async () => {
+        const url1 = `http://localhost:${port}/api/movie/${imdbId}`;
+        const url2 = `http://localhost:${port}/api/movie2/${imdbId}`;
+        const url3 = `http://localhost:${port}/api/movie3/${imdbId}`;
+        try {
+          const data = await Promise.all([
+            await axios.get(url1),
+            await axios.get(url2),
+            await axios.get(url3),
+          ]).then((responses) => responses.map((res) => res.data.result));
+          return data.flat();
+        } catch (error) {
+          return [];
+        }
+      };
+
       return res.status(200).json({
         ...response,
         extra,
-        downloadLinks: [],
+        downloadLinks: await getDownloadLinks(),
       });
     }
 
@@ -247,7 +253,6 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
 app.get("/api/movie/:imdbId", async (req, res) => {
   try {
     const { imdbId } = req.params;
-    console.log(imdbId);
     if (!imdbId) {
       return res.status(400).json({ error: "Missing parameters" });
     }
@@ -289,9 +294,9 @@ app.get("/api/movie2/:imdbId", async (req, res) => {
     if (!imdbId) {
       return res.status(400).json({ error: "Missing imdbId parameter" });
     }
-    const { data: html } = await axios.get(
-      `https://starkmoviez.com/movies/${imdbId}/`
-    );
+    const { data: html } = await axios
+      .get(`https://starkmoviez.com/movies/${imdbId}/`)
+      .catch(() => {});
     if (!html) {
       return res.status(500).json({ error: "Failed to fetch HTML" });
     }
@@ -324,24 +329,9 @@ app.get("/api/movie2/:imdbId", async (req, res) => {
     });
     return res.status(200).json({ status: 200, result });
   } catch (error) {
-    console.error(error);
     return res.status(200).json({ status: 400, result: [] });
   }
 });
-app.get("/api/imdb/:type/:id", async (req, res) => {
-  const { type, id } = req.params;
-  const url = `${SERVER}/${type}/${id}/external_ids?${API_KEY}`;
-
-  try {
-    const response = await axios.get(url);
-    const imdbId = response.data.imdb_id;
-    return res.status(200).json(imdbId);
-  } catch (error) {
-    console.error(`Error fetching data from: ${error}`);
-    return null;
-  }
-});
-
 app.get("/api/movie3/:imdbId", async (req, res) => {
   const domains = ["dl12", "dl11", "dl6", "dl5", "dl4", "dl3", "dl2"];
   const { imdbId } = req.params;
@@ -391,12 +381,25 @@ app.get("/api/movie3/:imdbId", async (req, res) => {
       await axios
         .get(url(domain))
         .then((response) => scrape(response.data, url(domain)))
-        .catch((e) => console.log(e));
+        .catch(() => {});
     };
 
     await Promise.all(domains.map((domain) => getData(domain)));
     return res.status(200).json({ status: 200, result: movieLinks });
   } catch (error) {
     return res.status(200).json({ status: 400, result: [] });
+  }
+});
+app.get("/api/imdb/:type/:id", async (req, res) => {
+  const { type, id } = req.params;
+  const url = `${SERVER}/${type}/${id}/external_ids?${API_KEY}`;
+
+  try {
+    const response = await axios.get(url);
+    const imdbId = response.data.imdb_id;
+    return res.status(200).json(imdbId);
+  } catch (error) {
+    console.error(`Error fetching data from: ${error}`);
+    return null;
   }
 });
