@@ -220,26 +220,9 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
         .then(({ data }) => data)
         .catch((e) => console.log(e));
 
-      const getDownloadLinks = async () => {
-        const url1 = `http://movie-cdn.runflare.run/api/movie/${imdbId}`;
-        const url2 = `http://localhost:${port}/api/movie2/${imdbId}`;
-        const url3 = `http://localhost:${port}/api/movie3/${imdbId}`;
-        try {
-          const data = await Promise.all([
-            await axios.get(url1),
-            await axios.get(url2),
-            await axios.get(url3),
-          ]).then((responses) => responses.map((res) => res.data.result));
-          return data.flat();
-        } catch (error) {
-          return [];
-        }
-      };
-
       return res.status(200).json({
         ...response,
         extra,
-        downloadLinks: await getDownloadLinks(),
       });
     }
 
@@ -249,7 +232,6 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
     return res.status(500).json({ error: `An error occurred:${error}` });
   }
 });
-
 app.get("/api/movie/:imdbId", async (req, res) => {
   try {
     const { imdbId } = req.params;
