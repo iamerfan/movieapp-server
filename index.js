@@ -332,6 +332,7 @@ app.get("/api/movie2/:imdbId", async (req, res) => {
     return res.status(200).json({ status: 400, result: [] });
   }
 });
+
 app.get("/api/movie3/:imdbId", async (req, res) => {
   const domains = ["dl12", "dl11", "dl6", "dl5", "dl4", "dl3", "dl2"];
   const { imdbId } = req.params;
@@ -343,16 +344,17 @@ app.get("/api/movie3/:imdbId", async (req, res) => {
   try {
     const movieData = await axios.get(`${EXTRA_URL}${imdbId}`);
     const { Title, Year } = movieData.data;
-
     const formattedTitle = Title.replace(/:/g, ".")
       .replace(/\s+/g, ".")
       .replace(/\.{2,}/g, ".");
 
     const url = (domain) => {
       if (domain == "dl11")
-        return `https://dl11.sermoviedown.pw/Movies/2023/${formattedTitle}.${Year}`;
+        return `https://dl11.sermoviedown.pw/Movies/${Year}/${formattedTitle}.${Year}`;
       if (domain == "dl6")
-        return `https://dl6.sermoviedown.pw/Movie/${Year}/${formattedTitle}.${Year}`;
+        return `https://dl6.sermoviedown.pw/Movie/${
+          Year > 2023 ? "2023" : Year
+        }/${formattedTitle}${Year >= 2023 ? `.${Year}` : ""}`;
       return `https://${domain}.sermoviedown.pw/Movies/${Year}/${formattedTitle}`;
     };
     const movieLinks = [];
@@ -362,13 +364,13 @@ app.get("/api/movie3/:imdbId", async (req, res) => {
 
       tableRows.each((i, row) => {
         if (i > 1) {
-          const movieTitle = $(row).find(".link").text();
-          const downloadLink = `${siteUrl}/${movieTitle}`;
+          const title = $(row).find(".link").text();
+          const downloadLink = `${siteUrl}/${title}`;
           const fileSize = $(row).find(".size").text();
 
           if (downloadLink.includes(".mkv") || downloadLink.includes(".mp4")) {
-            movieLinks.push({
-              title: movieTitle,
+            return movieLinks.push({
+              title: title,
               link: downloadLink,
               size: fileSize,
             });
@@ -378,18 +380,22 @@ app.get("/api/movie3/:imdbId", async (req, res) => {
     };
 
     const getData = async (domain) => {
-      await axios
-        .get(url(domain))
-        .then((response) => scrape(response.data, url(domain)))
-        .catch(() => {});
+      try {
+        const response = await axios.get(url(domain));
+        scrape(response.data, url(domain));
+      } catch (error) {}
     };
 
     await Promise.all(domains.map((domain) => getData(domain)));
     return res.status(200).json({ status: 200, result: movieLinks });
   } catch (error) {
-    return res.status(200).json({ status: 400, result: [] });
+    console.error(`Failed to fetch movie data: ${error.message}`);
+    return res
+      .status(500)
+      .json({ status: 500, error: "Internal Server Error" });
   }
 });
+
 app.get("/api/imdb/:type/:id", async (req, res) => {
   const { type, id } = req.params;
   const url = `${SERVER}/${type}/${id}/external_ids?${API_KEY}`;
