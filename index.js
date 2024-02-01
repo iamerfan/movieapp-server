@@ -328,48 +328,6 @@ app.get("/api/movie2/:imdbId", async (req, res) => {
     return res.status(200).json({ status: 400, result: [] });
   }
 });
-app.get("/api/movie3/:imdbId", async (req, res) => {
-  try {
-    const { imdbId } = req.params;
-    if (!imdbId) {
-      return res.status(400).json({ error: "Missing imdbId parameter" });
-    }
-    const extra = await axios
-      .get(`${EXTRA_URL}${imdbId}`)
-      .then(({ data }) => data)
-      .catch((e) => console.log(e));
-
-    const title = extra.Title.replace(/:/g, ".")
-      .replace(/\s+/g, ".")
-      .replace(/\.{2,}/g, ".");
-
-    const url =
-      Number(extra.Year) < 2023
-        ? `https://dl12.sermoviedown.pw/Movies/${extra.Year}/${title}`
-        : `https://dl11.sermoviedown.pw/Movies/2023/${title}.${extra.Year}`;
-
-    const { data: html } = await axios.get(url);
-    if (!html) {
-      return res.status(500).json({ error: "Failed to fetch HTML" });
-    }
-    const result = [];
-    const $ = cheerio.load(html);
-    const links = $("tr");
-    links.each((i, el) => {
-      if (i > 1) {
-        const title = $(el).find(".link").text();
-        const link = `${url}/${$(el).find(".link").text()}`;
-        const size = $(el).find(".size").text();
-        if (link.includes(".mkv") || link.includes(".mp4"))
-          return result.push({ title, link, size });
-      }
-    });
-    return res.status(200).json({ status: 200, result });
-  } catch (error) {
-    console.error(error.message);
-    return res.status(200).json({ status: 400 });
-  }
-});
 app.get("/api/imdb/:type/:id", async (req, res) => {
   const { type, id } = req.params;
   const url = `${SERVER}/${type}/${id}/external_ids?${API_KEY}`;
@@ -381,5 +339,64 @@ app.get("/api/imdb/:type/:id", async (req, res) => {
   } catch (error) {
     console.error(`Error fetching data from: ${error}`);
     return null;
+  }
+});
+
+app.get("/api/movie3/:imdbId", async (req, res) => {
+  const domains = ["dl12", "dl11", "dl6", "dl5", "dl4", "dl3", "dl2"];
+  const { imdbId } = req.params;
+
+  if (!imdbId) {
+    return res.status(400).json({ error: "Missing imdbId parameter" });
+  }
+
+  try {
+    const movieData = await axios.get(`${EXTRA_URL}${imdbId}`);
+    const { Title, Year } = movieData.data;
+
+    const formattedTitle = Title.replace(/:/g, ".")
+      .replace(/\s+/g, ".")
+      .replace(/\.{2,}/g, ".");
+
+    const url = (domain) => {
+      if (domain == "dl11")
+        return `https://dl11.sermoviedown.pw/Movies/2023/${formattedTitle}.${Year}`;
+      if (domain == "dl6")
+        return `https://dl6.sermoviedown.pw/Movie/${Year}/${formattedTitle}.${Year}`;
+      return `https://${domain}.sermoviedown.pw/Movies/${Year}/${formattedTitle}`;
+    };
+    const movieLinks = [];
+    const scrape = (html, siteUrl) => {
+      const $ = cheerio.load(html);
+      const tableRows = $("tr");
+
+      tableRows.each((i, row) => {
+        if (i > 1) {
+          const movieTitle = $(row).find(".link").text();
+          const downloadLink = `${siteUrl}/${movieTitle}`;
+          const fileSize = $(row).find(".size").text();
+
+          if (downloadLink.includes(".mkv") || downloadLink.includes(".mp4")) {
+            movieLinks.push({
+              title: movieTitle,
+              link: downloadLink,
+              size: fileSize,
+            });
+          }
+        }
+      });
+    };
+
+    const getData = async (domain) => {
+      await axios
+        .get(url(domain))
+        .then((response) => scrape(response.data, url(domain)))
+        .catch((e) => console.log(e));
+    };
+
+    await Promise.all(domains.map((domain) => getData(domain)));
+    return res.status(200).json({ status: 200, result: movieLinks });
+  } catch (error) {
+    return res.status(200).json({ status: 400, result: [] });
   }
 });
