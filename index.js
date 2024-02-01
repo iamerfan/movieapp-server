@@ -221,7 +221,7 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
         .catch((e) => console.log(e));
 
       const getDownloadLinks = async () => {
-        const url1 = `http://localhost:${port}/api/movie/${imdbId}`;
+        const url1 = `http://movie-cdn.runflare.run/api/movie/${imdbId}`;
         const url2 = `http://localhost:${port}/api/movie2/${imdbId}`;
         const url3 = `http://localhost:${port}/api/movie3/${imdbId}`;
         try {
