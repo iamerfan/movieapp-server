@@ -242,26 +242,40 @@ app.get("/api/movie/:imdbId", async (req, res) => {
     const { data: extra } = await axios.get(`${EXTRA_URL}${imdbId}`);
 
     const id = imdbId.slice(2);
-    const url = `https://berlin.saymyname.website/Movies/${extra.Year}/${id}/`;
-    const { data: html } = await axios.get(url);
-
-    if (!html) {
-      return res.status(500).json({ error: "Failed to fetch HTML" });
-    }
-
-    const $ = cheerio.load(html);
-    const links = $("tr");
     const result = [];
+    const scrape = (data, url) => {
+      if (!data) res.status(500).json({ error: "Failed to fetch HTML" });
 
-    links.each((i, el) => {
-      const text = $(el).find(".n>a>code").text();
-      const size = $(el).find(".s>code").text();
-      const link = url + $(el).find(".n>a").attr("href");
+      const $ = cheerio.load(data);
+      const links = $("tr");
 
-      if (i > 1) {
-        result.push({ text, size, link });
+      links.each((i, el) => {
+        const text = $(el).find(".n>a>code").text();
+        const size = $(el).find(".s>code").text();
+        const link = url + $(el).find(".n>a").attr("href");
+
+        if (i > 1) {
+          result.push({ text, size, link });
+        }
+      });
+    };
+    const url = `https://berlin.saymyname.website/Movies/${extra.Year}/${id}/`;
+
+    try {
+      const { data } = await axios.get(url);
+      scrape(data, url);
+    } catch (error) {
+      console.log(error.message);
+    }
+    if (!result.length > 0) {
+      const url2 = `https://nairobi.saymyname.website/Movies/${extra.Year}/${id}/`;
+      try {
+        const { data: data2 } = await axios.get(url2);
+        scrape(data2, url2);
+      } catch (error) {
+        console.log(error.message);
       }
-    });
+    }
 
     return res.status(200).json({ status: 200, result });
   } catch (error) {
@@ -416,7 +430,15 @@ app.get("/api/movie4/:imdbId", async (req, res) => {
     } catch (error) {
       console.log(error);
     }
-
+    if (!result.length > 0) {
+      const url2 = `https://avamovie.shop/دانلود-فیلم-${formattedTitle}`;
+      try {
+        const { data: data2 } = await axios.get(url2);
+        scrape(data2);
+      } catch (error) {
+        console.log(error);
+      }
+    }
     return res.status(200).json({ status: 200, result });
   } catch (error) {
     console.error(`Failed to fetch movie data: ${error.message}`);
