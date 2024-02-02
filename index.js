@@ -100,14 +100,14 @@ app.get("/api/genres/:type/:id/:page/:sort", async (req, res) => {
 app.get("/api/person/:id", async (req, res) => {
   const { id } = req.params;
   const url = `${process.env.SERVER}/person/${id}?${process.env.API_KEY}`;
-  const appearedInUrl = `${process.env.SERVER}/discover/movie?${process.env.API_KEY}&with_people=${id}`;
+  const appearedInUrl = `${process.env.SERVER}/person/${id}/combined_credits?${process.env.API_KEY}`;
   try {
     const [personData, moviesData] = await Promise.all([
       axios.get(url),
       axios.get(appearedInUrl),
     ]);
     const data = personData.data;
-    const movies = moviesData.data.results;
+    const movies = moviesData.data.cast;
     return res.status(200).json({ ...data, movies });
   } catch (error) {
     console.error(error);
@@ -437,5 +437,18 @@ app.get("/api/imdb/:type/:id", async (req, res) => {
   } catch (error) {
     console.error(`Error fetching data from: ${error}`);
     return null;
+  }
+});
+app.get("/api/test/:id", async (req, res) => {
+  const { path } = req.params;
+  const url = `${process.env.SERVER}/person/${id}/images?${process.env.API_KEY}`;
+  try {
+    const { data } = await axios.get(url);
+    return res.status(200).json({ data });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ error: "An error occurred while fetching data" });
   }
 });
