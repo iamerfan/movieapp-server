@@ -377,6 +377,57 @@ app.get("/api/movie3/:imdbId", async (req, res) => {
       .json({ status: 500, error: "Internal Server Error" });
   }
 });
+app.get("/api/movie4/:imdbId", async (req, res) => {
+  const { imdbId } = req.params;
+
+  if (!imdbId) {
+    return res.status(400).json({ error: "Missing imdbId parameter" });
+  }
+
+  try {
+    const movieData = await axios.get(`${EXTRA_URL}${imdbId}`);
+    const { Title } = movieData.data;
+    const formattedTitle = Title.replace(/:/g, "-")
+      .replace(/\s+/g, "-")
+      .replace(/\.{2,}/g, "-");
+
+    const movieLinks = [];
+
+    const scrape = (html) => {
+      const $ = cheerio.load(html);
+      const rows = $(".dl-row");
+      rows.each((i, row) => {
+        if (i > 1) {
+          const link = $(row).find(".link-main").attr("href");
+          if (link.includes("https://avamovie.shop")) return;
+
+          const text = `${Title} ${$(row).find("strong").text()}`;
+          const size = $(row).find(".size>.value").text();
+
+          return movieLinks.push({
+            text,
+            link,
+            size,
+          });
+        }
+      });
+    };
+    const url = `https://avamovie.shop/${formattedTitle}`;
+    try {
+      const { data } = await axios.get(url);
+      scrape(data);
+    } catch (error) {
+      console.log(error);
+    }
+
+    return res.status(200).json({ status: 200, result: movieLinks });
+  } catch (error) {
+    console.error(`Failed to fetch movie data: ${error.message}`);
+    return res
+      .status(500)
+      .json({ status: 500, error: "Internal Server Error" });
+  }
+});
 
 app.get("/api/imdb/:type/:id", async (req, res) => {
   const { type, id } = req.params;
