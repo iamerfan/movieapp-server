@@ -391,25 +391,22 @@ app.get("/api/movie4/:imdbId", async (req, res) => {
       .replace(/\s+/g, "-")
       .replace(/\.{2,}/g, "-");
 
-    const movieLinks = [];
+    const result = [];
 
     const scrape = (html) => {
       const $ = cheerio.load(html);
       const rows = $(".dl-row");
       rows.each((i, row) => {
-        if (i > 1) {
-          const link = $(row).find(".link-main").attr("href");
-          if (link.includes("https://avamovie.shop")) return;
+        const link = $(row).find(".link-main").attr("href");
+        if (link.includes("https://avamovie.shop")) return;
+        const text = `${Title} ${$(row).find("strong").text()}`;
+        const size = $(row).find(".size>.value").text();
 
-          const text = `${Title} ${$(row).find("strong").text()}`;
-          const size = $(row).find(".size>.value").text();
-
-          return movieLinks.push({
-            text,
-            link,
-            size,
-          });
-        }
+        return result.push({
+          text,
+          link,
+          size,
+        });
       });
     };
     const url = `https://avamovie.shop/${formattedTitle}`;
@@ -420,7 +417,7 @@ app.get("/api/movie4/:imdbId", async (req, res) => {
       console.log(error);
     }
 
-    return res.status(200).json({ status: 200, result: movieLinks });
+    return res.status(200).json({ status: 200, result });
   } catch (error) {
     console.error(`Failed to fetch movie data: ${error.message}`);
     return res
