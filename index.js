@@ -213,7 +213,6 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
 
     const { ids } = response;
     const imdbId = ids.imdb_id;
-
     if (imdbId) {
       const extra = await axios
         .get(`${EXTRA_URL}${imdbId}`)
@@ -393,18 +392,18 @@ app.get("/api/movie3/:imdbId", async (req, res) => {
 });
 app.get("/api/movie4/:imdbId", async (req, res) => {
   const { imdbId } = req.params;
-
   if (!imdbId) {
     return res.status(400).json({ error: "Missing imdbId parameter" });
   }
 
   try {
-    const movieData = await axios.get(`${EXTRA_URL}${imdbId}`);
+    const movieData = await axios
+      .get(`${EXTRA_URL}${imdbId}`)
+      .catch((e) => console.log(e));
     const { Title } = movieData.data;
     const formattedTitle = Title.replace(/:/g, "-")
       .replace(/\s+/g, "-")
       .replace(/\.{2,}/g, "-");
-
     const result = [];
 
     const scrape = (html) => {
@@ -459,18 +458,5 @@ app.get("/api/imdb/:type/:id", async (req, res) => {
   } catch (error) {
     console.error(`Error fetching data from: ${error}`);
     return null;
-  }
-});
-app.get("/api/test/:id", async (req, res) => {
-  const { path } = req.params;
-  const url = `${process.env.SERVER}/person/${id}/images?${process.env.API_KEY}`;
-  try {
-    const { data } = await axios.get(url);
-    return res.status(200).json({ data });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ error: "An error occurred while fetching data" });
   }
 });
