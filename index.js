@@ -195,7 +195,7 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
 
   try {
     const values = await Promise.all(promises);
-
+    console.log(values[6]);
     const response = {
       details: values[0],
       ids: values[1],
@@ -207,23 +207,9 @@ app.get("/api/title/:type/:id/:seasonId?", async (req, res) => {
       },
       reviews: values[4],
       similar: values[5],
-      season: values[6] || [],
+      season: type === "tv" ? values[6] : [],
       videos: filterVideos(values[values.length - 1].results),
     };
-
-    const { ids } = response;
-    const imdbId = ids.imdb_id;
-    if (imdbId) {
-      const extra = await axios
-        .get(`${EXTRA_URL}${imdbId}`)
-        .then(({ data }) => data)
-        .catch((e) => console.log(e));
-
-      return res.status(200).json({
-        ...response,
-        extra,
-      });
-    }
 
     return res.status(200).json(response);
   } catch (error) {
