@@ -376,17 +376,17 @@ app.get("/api/movie3/:imdbId", async (req, res) => {
       .json({ status: 500, error: "Internal Server Error" });
   }
 });
-app.get("/api/movie4/:imdbId", async (req, res) => {
-  const { imdbId } = req.params;
-  if (!imdbId) {
-    return res.status(400).json({ error: "Missing imdbId parameter" });
+app.get("/api/movie4/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: "Missing id parameter" });
   }
 
   try {
-    const movieData = await axios
-      .get(`${EXTRA_URL}${imdbId}`)
+    const { data } = await axios
+      .get(`https://api.themoviedb.org/3/movie/${id}?${API_KEY}`)
       .catch((e) => console.log(e));
-    const { Title } = movieData.data;
+    const Title = data.original_title;
     const formattedTitle = Title.replace(/:/g, "-")
       .replace(/\s+/g, "-")
       .replace(/\.{2,}/g, "-");
