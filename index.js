@@ -386,6 +386,7 @@ app.get("/api/movie4/:id", async (req, res) => {
     const { data } = await axios
       .get(`https://api.themoviedb.org/3/movie/${id}?${API_KEY}`)
       .catch((e) => console.log(e));
+    const year = data.release_date.slice(0, 4);
     const Title = data.original_title;
     const formattedTitle = Title.replace(/:/g, "-")
       .replace(/\s+/g, "-")
@@ -408,7 +409,7 @@ app.get("/api/movie4/:id", async (req, res) => {
         });
       });
     };
-    const url = `https://avamovie.shop/${formattedTitle}`;
+    const url = `https://avamovie.shop/${formattedTitle}-${year}`;
     try {
       const { data } = await axios.get(url);
       scrape(data);
@@ -416,7 +417,7 @@ app.get("/api/movie4/:id", async (req, res) => {
       console.log(error);
     }
     if (!result.length > 0) {
-      const url2 = `https://avamovie.shop/دانلود-فیلم-${formattedTitle}`;
+      const url2 = `https://avamovie.shop/دانلود-فیلم-${formattedTitle}-${year}`;
       try {
         const { data: data2 } = await axios.get(url2);
         scrape(data2);
@@ -424,6 +425,7 @@ app.get("/api/movie4/:id", async (req, res) => {
         console.log(error);
       }
     }
+
     return res.status(200).json({ status: 200, result });
   } catch (error) {
     console.error(`Failed to fetch movie data: ${error.message}`);
